@@ -1,0 +1,328 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word Builder</title>
+<style>
+body{
+margin:0;
+font-family:Arial,sans-serif;
+background:linear-gradient(135deg,#d7edd8,#f5fbf5);
+height:100vh;
+overflow:hidden;
+}
+.app{
+display:grid;
+grid-template-columns:220px 1fr;
+height:100vh;
+}
+.sidebar{
+background:rgba(255,255,255,.55);
+padding:15px;
+overflow:auto;
+}
+.set{
+padding:14px;
+margin:8px 0;
+border-radius:14px;
+background:#eef7ef;
+cursor:pointer;
+font-size:20px;
+text-align:center;
+}
+.active{
+background:#69a56f;
+color:white;
+font-weight:bold;
+}
+button{
+border:none;
+border-radius:14px;
+padding:14px;
+cursor:pointer;
+font-size:18px;
+}
+.main{
+display:flex;
+flex-direction:column;
+padding:20px;
+gap:12px;
+overflow:hidden;
+}
+.top{
+display:flex;
+justify-content:flex-end;
+gap:10px;
+}
+.clearBtn{
+background:#d86b6b;
+color:white;
+font-weight:bold;
+}
+.wordArea{
+display:flex;
+justify-content:center;
+align-items:center;
+}
+.dropzone{
+width:95%;
+min-height:220px;
+border:4px dashed #8bb18f;
+border-radius:30px;
+background:rgba(255,255,255,.4);
+display:flex;
+flex-wrap:wrap;
+justify-content:center;
+align-items:center;
+gap:12px;
+padding:20px;
+}
+.placeholder{
+font-size:32px;
+color:#5e7d61;
+font-weight:bold;
+}
+.wordCard,.card{
+position:relative;
+display:flex;
+justify-content:center;
+align-items:center;
+background:white;
+border-radius:24px;
+font-weight:bold;
+box-shadow:0 6px 15px rgba(0,0,0,.1);
+cursor:pointer;
+user-select:none;
+}
+
+.cards{
+flex:1;
+overflow:hidden;
+display:flex;
+flex-wrap:wrap;
+justify-content:center;
+align-content:flex-start;
+gap:16px;
+padding:10px;
+}
+
+.delete{
+position:absolute;
+top:4px;
+right:8px;
+font-size:22px;
+color:#c33;
+font-weight:bold;
+cursor:pointer;
+}
+
+.hidden{
+display:none;
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+<div class="sidebar">
+<h2>Sets</h2>
+<div id="sets"></div>
+<button onclick="newSet()">+ New Set</button>
+</div>
+
+<div class="main">
+
+<div class="top">
+<button onclick="toggleEdit()" id="editBtn">Edit</button>
+<button onclick="addCard()">+ Add Card</button>
+<button class="clearBtn" onclick="clearWord()">🗑 Clear</button>
+</div>
+
+<div class="wordArea">
+<div class="dropzone" id="word"></div>
+</div>
+
+<div class="cards" id="cards"></div>
+
+</div>
+</div>
+
+<script>
+const KEY='kids_word_builder_v3';
+
+let data=JSON.parse(localStorage.getItem(KEY)||'{"sets":[{"id":1,"name":"Letters","cards":["a","b","c","d"]}],"active":1}');
+let word=[];
+let editMode=false;
+
+function save(){
+localStorage.setItem(KEY,JSON.stringify(data));
+}
+
+function activeSet(){
+return data.sets.find(s=>s.id===data.active);
+}
+
+function getCardSize(count){
+if(count<=6) return 230;
+if(count<=12) return 190;
+if(count<=20) return 160;
+if(count<=30) return 140;
+if(count<=40) return 120;
+if(count<=52) return 100;
+if(count<=70) return 85;
+return 72;
+}
+
+function render(){
+
+let sets=document.getElementById('sets');
+sets.innerHTML='';
+
+data.sets.forEach(s=>{
+let el=document.createElement('div');
+el.className='set'+(s.id===data.active?' active':'');
+el.textContent=s.name;
+
+el.onclick=()=>{
+data.active=s.id;
+save();
+render();
+};
+
+el.ondblclick=()=>{
+let n=prompt('Set name',s.name);
+if(n){
+s.name=n;
+save();
+render();
+}
+};
+
+sets.appendChild(el);
+});
+
+const cards=document.getElementById('cards');
+cards.innerHTML='';
+
+let size=getCardSize(activeSet().cards.length);
+
+activeSet().cards.forEach((letter,index)=>{
+
+let card=document.createElement('div');
+card.className='card';
+
+card.style.width=size+'px';
+card.style.height=size+'px';
+card.style.fontSize=(size*0.55)+'px';
+
+card.textContent=letter;
+
+card.onclick=()=>{
+if(editMode) return;
+word.push(letter);
+renderWord();
+};
+
+if(editMode){
+let del=document.createElement('div');
+del.className='delete';
+del.innerHTML='✕';
+
+del.onclick=(e)=>{
+e.stopPropagation();
+activeSet().cards.splice(index,1);
+save();
+render();
+};
+
+card.appendChild(del);
+}
+
+cards.appendChild(card);
+});
+
+renderWord();
+save();
+}
+
+function renderWord(){
+
+let wordBox=document.getElementById('word');
+wordBox.innerHTML='';
+
+if(word.length===0){
+let p=document.createElement('div');
+p.className='placeholder';
+p.textContent='Tap cards';
+wordBox.appendChild(p);
+return;
+}
+
+word.forEach((letter,index)=>{
+
+let c=document.createElement('div');
+c.className='wordCard';
+
+c.style.width='170px';
+c.style.height='170px';
+c.style.fontSize='90px';
+
+c.textContent=letter;
+
+c.onclick=()=>{
+word.splice(index,1);
+renderWord();
+};
+
+wordBox.appendChild(c);
+
+});
+}
+
+function toggleEdit(){
+editMode=!editMode;
+document.getElementById('editBtn').textContent=editMode?'Done':'Edit';
+render();
+}
+
+function clearWord(){
+word=[];
+renderWord();
+}
+
+function addCard(){
+let l=prompt('Letter');
+if(!l) return;
+
+activeSet().cards.push(l);
+save();
+render();
+}
+
+function newSet(){
+
+let name=prompt('Set name');
+if(!name) return;
+
+let id=Date.now();
+
+data.sets.push({
+id:id,
+name:name,
+cards:[]
+});
+
+data.active=id;
+
+save();
+render();
+}
+
+render();
+</script>
+
+</body>
+</html>
